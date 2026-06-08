@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { SCRAPER_API_BASE } from '../utils/api.js';
 
 export default function Settings({ onClose, onScrapeSuccess }) {
   const [cookie, setCookie] = useState('');
@@ -8,7 +9,7 @@ export default function Settings({ onClose, onScrapeSuccess }) {
 
   useEffect(() => {
     // Load the current cookie from the local API
-    fetch('/api/get-cookie')
+    fetch(`${SCRAPER_API_BASE}/api/get-cookie`)
       .then(res => res.json())
       .then(data => {
         if (data.cookie) {
@@ -24,7 +25,7 @@ export default function Settings({ onClose, onScrapeSuccess }) {
     setLogs('');
     setStatus('Saving cookie and triggering scraper...');
 
-    fetch('/api/scrape', {
+    fetch(`${SCRAPER_API_BASE}/api/scrape`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

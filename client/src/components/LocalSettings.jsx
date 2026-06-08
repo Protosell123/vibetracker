@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { LOCAL_API_BASE } from '../utils/api.js';
 
 export default function LocalSettings({ isBackendOnline }) {
   const [scanPaths, setScanPaths] = useState([]);
@@ -16,28 +17,28 @@ export default function LocalSettings({ isBackendOnline }) {
 
     try {
       // 1. Fetch scan paths
-      const pathsRes = await fetch('/api/scan-paths?type=plugin');
+      const pathsRes = await fetch(`${LOCAL_API_BASE}/api/scan-paths?type=plugin`);
       if (pathsRes.ok) {
         const data = await pathsRes.json();
         setScanPaths(data);
       }
 
       // 2. Fetch excluded folders
-      const exclRes = await fetch('/api/excluded-folders');
+      const exclRes = await fetch(`${LOCAL_API_BASE}/api/excluded-folders`);
       if (exclRes.ok) {
         const data = await exclRes.json();
         setExcludedFolders(data);
       }
 
       // 3. Fetch key status
-      const keyStatusRes = await fetch('/api/ai/key-status');
+      const keyStatusRes = await fetch(`${LOCAL_API_BASE}/api/ai/key-status`);
       if (keyStatusRes.ok) {
         const data = await keyStatusRes.json();
         setIsApiKeyConfigured(data.configured);
       }
 
       // 4. Fetch actual key if configured (to allow editing it)
-      const keyRes = await fetch('/api/settings/anthropic_api_key');
+      const keyRes = await fetch(`${LOCAL_API_BASE}/api/settings/anthropic_api_key`);
       if (keyRes.ok) {
         const data = await keyRes.json();
         if (data.value) {
@@ -59,7 +60,7 @@ export default function LocalSettings({ isBackendOnline }) {
     if (!newScanPath.trim() || !isBackendOnline) return;
 
     try {
-      const res = await fetch('/api/scan-paths', {
+      const res = await fetch(`${LOCAL_API_BASE}/api/scan-paths`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'plugin', path: newScanPath.trim() })
@@ -82,7 +83,7 @@ export default function LocalSettings({ isBackendOnline }) {
     if (!isBackendOnline) return;
 
     try {
-      const res = await fetch(`/api/scan-paths/${id}`, {
+      const res = await fetch(`${LOCAL_API_BASE}/api/scan-paths/${id}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -102,7 +103,7 @@ export default function LocalSettings({ isBackendOnline }) {
     if (!newExcludedFolder.trim() || !isBackendOnline) return;
 
     try {
-      const res = await fetch('/api/excluded-folders', {
+      const res = await fetch(`${LOCAL_API_BASE}/api/excluded-folders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: newExcludedFolder.trim() })
@@ -125,7 +126,7 @@ export default function LocalSettings({ isBackendOnline }) {
     if (!isBackendOnline) return;
 
     try {
-      const res = await fetch(`/api/excluded-folders/${id}`, {
+      const res = await fetch(`${LOCAL_API_BASE}/api/excluded-folders/${id}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -146,7 +147,7 @@ export default function LocalSettings({ isBackendOnline }) {
 
     setIsSavingKey(true);
     try {
-      const res = await fetch('/api/settings', {
+      const res = await fetch(`${LOCAL_API_BASE}/api/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: 'anthropic_api_key', value: apiKey.trim() || null })

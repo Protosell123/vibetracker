@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { LOCAL_API_BASE } from '../utils/api.js';
 
 // Markdown-lite renderer
 function renderMarkdown(text) {
@@ -73,7 +74,7 @@ export default function LocalAssistant({ isBackendOnline, onGoToSettings }) {
   // Check if API key is configured
   useEffect(() => {
     if (!isBackendOnline) return;
-    fetch('/api/ai/key-status')
+    fetch(`${LOCAL_API_BASE}/api/ai/key-status`)
       .then(r => r.json())
       .then(d => setKeyOk(d.configured))
       .catch(() => setKeyOk(false));
@@ -99,7 +100,7 @@ export default function LocalAssistant({ isBackendOnline, onGoToSettings }) {
     setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
     try {
-      const res = await fetch('/api/ai/suggest', {
+      const res = await fetch(`${LOCAL_API_BASE}/api/ai/suggest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newMessages }),

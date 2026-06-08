@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { LOCAL_API_BASE } from '../utils/api.js';
 
 export default function LocalLibrary({ isBackendOnline }) {
   const [plugins, setPlugins] = useState([]);
@@ -21,7 +22,7 @@ export default function LocalLibrary({ isBackendOnline }) {
     const [sortCol, sortDir] = sortOption.split(':');
     const params = new URLSearchParams({ search: searchQuery, sort: sortCol, order: sortDir });
     try {
-      const res = await fetch(`/api/plugins?${params}`);
+      const res = await fetch(`${LOCAL_API_BASE}/api/plugins?${params}`);
       if (res.ok) {
         const data = await res.json();
         setPlugins(data);
@@ -49,7 +50,7 @@ export default function LocalLibrary({ isBackendOnline }) {
     if (pollRef.current) return;
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch('/api/scan/status');
+        const res = await fetch(`${LOCAL_API_BASE}/api/scan/status`);
         if (res.ok) {
           const status = await res.json();
           setScanStatus(status);
@@ -68,7 +69,7 @@ export default function LocalLibrary({ isBackendOnline }) {
 
   const handleScan = async () => {
     try {
-      const res = await fetch('/api/scan/plugins', { method: 'POST' });
+      const res = await fetch(`${LOCAL_API_BASE}/api/scan/plugins`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         if (data.ok) {
@@ -86,7 +87,7 @@ export default function LocalLibrary({ isBackendOnline }) {
     if (!selectedPlugin) return;
     setIsSaving(true);
     try {
-      const res = await fetch(`/api/plugins/${selectedPlugin.id}`, {
+      const res = await fetch(`${LOCAL_API_BASE}/api/plugins/${selectedPlugin.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -97,7 +98,7 @@ export default function LocalLibrary({ isBackendOnline }) {
       });
       if (res.ok) {
         // Reload details and list
-        const detailRes = await fetch(`/api/plugins/${selectedPlugin.id}`);
+        const detailRes = await fetch(`${LOCAL_API_BASE}/api/plugins/${selectedPlugin.id}`);
         if (detailRes.ok) {
           const updated = await detailRes.json();
           setSelectedPlugin(updated);

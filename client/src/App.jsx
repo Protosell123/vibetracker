@@ -6,6 +6,7 @@ import LocalLibrary from './components/LocalLibrary.jsx';
 import LocalAssistant from './components/LocalAssistant.jsx';
 import LocalSettings from './components/LocalSettings.jsx';
 import { getPluginFunction, getSampleType } from './utils/classifier.js';
+import { LOCAL_API_BASE } from './utils/api.js';
 
 // Import datasets
 import mockData from './data/mock_plugins.json';
@@ -74,11 +75,11 @@ export default function App() {
   // Pluggen backend health check & local plugin count
   const checkBackendHealth = useCallback(async () => {
     try {
-      const res = await fetch('/api/health');
+      const res = await fetch(`${LOCAL_API_BASE}/api/health`);
       if (res.ok) {
         setIsBackendOnline(true);
         // Fetch local plugin count
-        const countRes = await fetch('/api/plugins/count');
+        const countRes = await fetch(`${LOCAL_API_BASE}/api/plugins/count`);
         if (countRes.ok) {
           const countData = await countRes.json();
           setLocalPluginCount(countData.count);
