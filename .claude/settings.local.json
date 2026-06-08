@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -rf /c/pluggen/server/node_modules)",
+      "Bash(npm install *)",
+      "mcp__Claude_Preview__preview_start",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(cd /mnt/c/pluggen/server && npm install @anthropic-ai/sdk 2>&1 | tail -5)",
+      "PowerShell(Start-Process -FilePath \"node\" -ArgumentList \"--no-warnings\", \"server.js\" -WorkingDirectory \"C:\\\\pluggen\\\\server\" -WindowStyle Hidden; Start-Sleep -Seconds 2; try { $r = Invoke-WebRequest -Uri \"http://localhost:3001/api/health\" -UseBasicParsing -TimeoutSec 5; \"Server OK: $\\($r.Content\\)\" } catch { \"Server not responding: $_\" })"
+    ]
+  }
+}

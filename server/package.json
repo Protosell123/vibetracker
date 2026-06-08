@@ -1,0 +1,14 @@
+{
+  "name": "pluggen-server",
+  "version": "1.0.0",
+  "description": "Pluggen backend server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --no-warnings server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.96.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
