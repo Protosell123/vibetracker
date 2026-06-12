@@ -1116,3 +1116,31 @@ body {
 .log-line.warning {
   color: var(--accent-orange);
 }
+
+/* ==========================================================================
+   SOURCE BADGES
+   ========================================================================== */
+.source-badge {
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 5px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.source-badge.vstorrent {
+  background-color: rgba(0, 158, 173, 0.12);
+  border: 1px solid rgba(0, 158, 173, 0.25);
+  color: #00e1f5;
+}
+
+.source-badge.rutracker {
+  background-color: rgba(223, 177, 91, 0.08);
+  border: 1px solid rgba(223, 177, 91, 0.2);
+  color: #dfb15b;
+}
+

@@ -4,6 +4,7 @@ import iconv from 'iconv-lite';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import { execSync } from 'child_process';
 
 // Load environment variables from .env
 dotenv.config();
@@ -304,11 +305,43 @@ async function run() {
     }
     
     const outputPath = path.join(dataDir, 'rutracker_plugins.json');
-    fs.writeFileSync(outputPath, JSON.stringify(allTorrents, null, 2), 'utf-8');
-    console.log(`\n[Scraper] SUCCESS! Scraped a total of ${allTorrents.length} items across all sections.`);
-    console.log(`Saved output database to: ${outputPath}`);
+    
+    // Explicitly mark RuTracker items
+    allTorrents.forEach(item => {
+      item.source = 'RuTracker';
+    });
+
+    let mergedDatabase = [...allTorrents];
+
+    if (fs.existsSync(outputPath)) {
+      try {
+        const raw = fs.readFileSync(outputPath, 'utf-8');
+        const existingData = JSON.parse(raw);
+        // Keep VSTorrent items
+        const vstorrentItems = existingData.filter(item => item.source === 'VSTorrent');
+        mergedDatabase = [...mergedDatabase, ...vstorrentItems];
+        console.log(`[Scraper] Preserved ${vstorrentItems.length} VSTorrent items from existing database.`);
+      } catch (err) {
+        console.warn('[Scraper] Could not read existing database to preserve VSTorrent items:', err.message);
+      }
+    }
+
+    // Sort database by date descending
+    mergedDatabase.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    fs.writeFileSync(outputPath, JSON.stringify(mergedDatabase, null, 2), 'utf-8');
+    console.log(`\n[Scraper] SUCCESS! Scraped a total of ${allTorrents.length} RuTracker items.`);
+    console.log(`Saved merged database with ${mergedDatabase.length} total items to: ${outputPath}`);
   } else {
     console.error('\n[Scraper] FAILED: Could not scrape any data.');
+  }
+
+  // Trigger VSTorrent sync as well
+  try {
+    console.log('\n[Scraper] Launching VSTorrent scraper...');
+    execSync('node vstorrent_scraper.js', { stdio: 'inherit' });
+  } catch (err) {
+    console.error('[Scraper] VSTorrent scraper execution failed:', err.message);
   }
 }
 

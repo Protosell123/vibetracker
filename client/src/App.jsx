@@ -231,9 +231,10 @@ export default function App() {
 
   // Helper to parse size strings
   const parseSize = (sizeStr) => {
-    if (!sizeStr) return 0;
+    if (!sizeStr || sizeStr.toLowerCase().includes('unknown')) return 0;
     const clean = sizeStr.replace(/\s+/g, '').replace(',', '.').toUpperCase();
     const val = parseFloat(clean);
+    if (isNaN(val)) return 0;
     if (clean.includes('GB')) return val * 1024 * 1024 * 1024;
     if (clean.includes('MB')) return val * 1024 * 1024;
     if (clean.includes('KB')) return val * 1024;
@@ -517,6 +518,9 @@ export default function App() {
                                 </span>
                                 <span className="row-badge-pill">
                                   {classification.icon} {classification.label}
+                                </span>
+                                <span className={`source-badge ${item.source === 'VSTorrent' ? 'vstorrent' : 'rutracker'}`} style={{ marginLeft: '6px' }}>
+                                  {item.source || 'RuTracker'}
                                 </span>
                               </td>
                               <td className="cell-creator">{item.developer}</td>

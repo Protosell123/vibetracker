@@ -17,9 +17,14 @@ export default function PluginCard({ plugin, isFavorite, onToggleFavorite, onDow
   return (
     <div className="modern-card">
       <div className="card-header">
-        <span className="card-developer" title={plugin.developer}>
-          {plugin.developer || 'Unknown'}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+          <span className="card-developer" title={plugin.developer} style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}>
+            {plugin.developer || 'Unknown'}
+          </span>
+          <span className={`source-badge ${plugin.source === 'VSTorrent' ? 'vstorrent' : 'rutracker'}`}>
+            {plugin.source || 'RuTracker'}
+          </span>
+        </div>
         <button 
           className={`fav-star-btn ${isFavorite ? 'active' : ''}`}
           onClick={(e) => {

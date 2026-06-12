@@ -5,7 +5,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const Anthropic = require('@anthropic-ai/sdk');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 
 const app = express();
 const PORT = 3001;
@@ -70,6 +70,7 @@ app.use(express.json());
 // ─── Plugin Scanner ────────────────────────────────────────────────────────────
 
 let scanState = { running: false, found: 0, current: '', error: null, done: false };
+let scrapeState = { running: false, done: false, error: null, logs: [] };
 
 function formatFromExt(ext) {
   if (ext === '.vst3')     return 'vst3';
@@ -210,31 +211,67 @@ app.post('/api/scrape', (req, res) => {
   const { cookie } = req.body;
   const envPath = path.join(__dirname, '../client/.env');
   
+  if (scrapeState.running) {
+    return res.status(400).json({ success: false, error: 'Scraper is already running.' });
+  }
+  
   try {
     if (cookie !== undefined) {
       fs.writeFileSync(envPath, `# Paste your RuTracker bb_session cookie below:\nBB_SESSION=${cookie.trim()}\n`, 'utf-8');
     }
     
-    console.log('[Server API] Triggering scraper.js local execution...');
+    scrapeState = {
+      running: true,
+      done: false,
+      error: null,
+      logs: []
+    };
     
-    exec('node scraper.js', { cwd: path.join(__dirname, '../client') }, (error, stdout, stderr) => {
-      if (error) {
-        console.error('[Server API] Scraper failed:', stderr || error.message);
-        res.json({ 
-          success: false, 
-          log: stdout + '\n' + (stderr || error.message) 
-        });
-      } else {
+    console.log('[Server API] Triggering scraper.js asynchronous background execution...');
+    scrapeState.logs.push('[System] Starting scraper process...\n');
+    
+    const child = spawn('node', ['scraper.js'], { 
+      cwd: path.join(__dirname, '../client'),
+      env: { ...process.env }
+    });
+    
+    child.stdout.on('data', (data) => {
+      scrapeState.logs.push(data.toString());
+    });
+    
+    child.stderr.on('data', (data) => {
+      scrapeState.logs.push(data.toString());
+    });
+    
+    child.on('error', (err) => {
+      console.error('[Server API] Scraper failed to start:', err.message);
+      scrapeState.running = false;
+      scrapeState.error = err.message;
+      scrapeState.logs.push(`[System Error] Failed to start scraper: ${err.message}\n`);
+    });
+    
+    child.on('close', (code) => {
+      scrapeState.running = false;
+      if (code === 0) {
+        scrapeState.done = true;
+        scrapeState.logs.push('\n[System] Scraper finished successfully!\n');
         console.log('[Server API] Scraper completed successfully.');
-        res.json({ 
-          success: true, 
-          log: stdout 
-        });
+      } else {
+        scrapeState.error = `Exit code ${code}`;
+        scrapeState.logs.push(`\n[System Error] Scraper exited with code ${code}\n`);
+        console.error(`[Server API] Scraper failed with exit code ${code}`);
       }
     });
+    
+    res.json({ success: true, message: 'Scraper started in background.' });
   } catch (err) {
+    console.error('[Server API] Error starting scraper:', err.message);
     res.status(500).json({ success: false, log: err.message });
   }
+});
+
+app.get('/api/scrape/status', (req, res) => {
+  res.json(scrapeState);
 });
 
 // ─── Routes: scan paths ────────────────────────────────────────────────────────
