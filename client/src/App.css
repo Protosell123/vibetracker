@@ -1144,3 +1144,15 @@ body {
   color: #dfb15b;
 }
 
+.category-folder-header {
+  transition: background-color 0.15s ease;
+  user-select: none;
+}
+
+.category-folder-header:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.category-folder-header td {
+  border-bottom: 1px solid var(--border-color);
+}

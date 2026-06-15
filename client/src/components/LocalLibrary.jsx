@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { LOCAL_API_BASE } from '../utils/api.js';
+import { getPluginFunction } from '../utils/classifier.js';
 
 export default function LocalLibrary({ isBackendOnline }) {
   const [plugins, setPlugins] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState('display_name:asc');
+  const [typeFilter, setTypeFilter] = useState('All'); // 'All', 'Effect', 'Instrument'
+  const [collapsedCategories, setCollapsedCategories] = useState({});
   const [scanStatus, setScanStatus] = useState(null);
   const [selectedPlugin, setSelectedPlugin] = useState(null);
   
@@ -155,6 +158,80 @@ export default function LocalLibrary({ isBackendOnline }) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  // Helper to identify Instruments vs Audio Effects
+  const isInstrument = useCallback((p) => {
+    const t = `${p.display_name || ''} ${p.filename || ''} ${p.path || ''} ${p.notes || ''}`.toLowerCase();
+    if (
+      t.includes('vsti') || 
+      t.includes('instruments') || 
+      t.includes('instrumenten') || 
+      t.includes('synth') || 
+      t.includes('synthesizer') || 
+      t.includes('kontakt') || 
+      t.includes('piano') || 
+      t.includes('keys') || 
+      t.includes('drum machine') || 
+      t.includes('drummer') || 
+      t.includes('organ') || 
+      t.includes('sampler') || 
+      t.includes('generator')
+    ) {
+      return true;
+    }
+    const func = getPluginFunction(p.display_name || p.filename, p.path);
+    return func.id === 'synth';
+  }, []);
+
+  // Filter plugins by Type (client-side)
+  const processedPlugins = useMemo(() => {
+    return plugins.filter(p => {
+      if (typeFilter === 'Instrument') return isInstrument(p);
+      if (typeFilter === 'Effect') return !isInstrument(p);
+      return true;
+    });
+  }, [plugins, typeFilter, isInstrument]);
+
+  // Group plugins into functional folders
+  const groupedPlugins = useMemo(() => {
+    const groups = {};
+    processedPlugins.forEach(p => {
+      const func = getPluginFunction(p.display_name || p.filename, p.path);
+      const catId = func.id || 'other';
+      const catLabel = func.label || 'Other Plugins';
+      const catIcon = func.icon || '🎛️';
+      
+      if (!groups[catId]) {
+        groups[catId] = {
+          id: catId,
+          label: catLabel,
+          icon: catIcon,
+          plugins: []
+        };
+      }
+      groups[catId].plugins.push(p);
+    });
+
+    const categoryOrder = ['synth', 'reverb', 'delay', 'eq', 'compressor', 'distortion', 'vocal', 'modulation', 'mastering', 'other'];
+    const orderedGroups = [];
+    
+    categoryOrder.forEach(catId => {
+      if (groups[catId]) orderedGroups.push(groups[catId]);
+    });
+    
+    Object.keys(groups).forEach(catId => {
+      if (!categoryOrder.includes(catId)) orderedGroups.push(groups[catId]);
+    });
+
+    return orderedGroups;
+  }, [processedPlugins]);
+
+  const toggleCategory = (catId) => {
+    setCollapsedCategories(prev => ({
+      ...prev,
+      [catId]: !prev[catId]
+    }));
+  };
+
   return (
     <div className="local-library-container flex-col" style={{ height: '100%', overflow: 'hidden' }}>
       {/* Top Header Row */}
@@ -215,29 +292,72 @@ export default function LocalLibrary({ isBackendOnline }) {
       )}
 
       {/* Filter panel */}
-      <div className="flex-row" style={{ gap: '10px', marginBottom: '16px', shrink: 0 }}>
+      <div className="flex-row" style={{ gap: '10px', marginBottom: '16px', shrink: 0, alignItems: 'center' }}>
         <input 
           type="text" 
-          className="ableton-search-input" 
+          className="sidebar-search-input"
           placeholder="Filter local plugins..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ flexGrow: 1 }}
+          style={{ flexGrow: 1, margin: 0 }}
         />
         
-        <select 
-          className="ableton-dropdown"
-          value={sortOption}
-          onChange={(e) => setSortOption(e.target.value)}
-          style={{ width: '160px' }}
-        >
-          <option value="display_name:asc">Name (A-Z)</option>
-          <option value="display_name:desc">Name (Z-A)</option>
-          <option value="vendor:asc">Vendor (A-Z)</option>
-          <option value="vendor:desc">Vendor (Z-A)</option>
-          <option value="format:asc">Format</option>
-          <option value="file_size:desc">Largest Size</option>
-        </select>
+        {/* Type Filter */}
+        <div className="select-wrapper" style={{ width: '160px' }}>
+          <select 
+            className="custom-select"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+          >
+            <option value="All">All Types</option>
+            <option value="Effect">Audio Effects</option>
+            <option value="Instrument">Instruments</option>
+          </select>
+          <span className="select-arrow">▼</span>
+        </div>
+
+        {/* Sort Option */}
+        <div className="select-wrapper" style={{ width: '160px' }}>
+          <select 
+            className="custom-select"
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value)}
+          >
+            <option value="display_name:asc">Name (A-Z)</option>
+            <option value="display_name:desc">Name (Z-A)</option>
+            <option value="vendor:asc">Vendor (A-Z)</option>
+            <option value="vendor:desc">Vendor (Z-A)</option>
+            <option value="format:asc">Format</option>
+            <option value="file_size:desc">Largest Size</option>
+          </select>
+          <span className="select-arrow">▼</span>
+        </div>
+
+        {/* Tree controls */}
+        <div className="flex-row" style={{ gap: '8px', fontSize: '11px', whiteSpace: 'nowrap' }}>
+          <button 
+            type="button" 
+            className="dev-tag-pill" 
+            onClick={() => setCollapsedCategories({})}
+            title="Expand all folders"
+          >
+            📂 Expand All
+          </button>
+          <button 
+            type="button" 
+            className="dev-tag-pill" 
+            onClick={() => {
+              const allCollapsed = {};
+              groupedPlugins.forEach(g => {
+                allCollapsed[g.id] = true;
+              });
+              setCollapsedCategories(allCollapsed);
+            }}
+            title="Collapse all folders"
+          >
+            📁 Collapse All
+          </button>
+        </div>
       </div>
 
       {/* Main split display: table list on left, edit metadata on right */}
@@ -247,7 +367,7 @@ export default function LocalLibrary({ isBackendOnline }) {
           <table className="modern-table">
             <thead>
               <tr>
-                <th>Format</th>
+                <th style={{ width: '80px' }}>Format</th>
                 <th>Name</th>
                 <th>Vendor</th>
                 <th>File Size</th>
@@ -255,35 +375,64 @@ export default function LocalLibrary({ isBackendOnline }) {
               </tr>
             </thead>
             <tbody>
-              {plugins.length > 0 ? (
-                plugins.map((p) => {
-                  const isSel = selectedPlugin && selectedPlugin.id === p.id;
+              {groupedPlugins.length > 0 ? (
+                groupedPlugins.map((group) => {
+                  const isCollapsed = searchQuery.trim() !== '' ? false : !!collapsedCategories[group.id];
                   return (
-                    <tr 
-                      key={p.id} 
-                      className={`modern-tr-row ${isSel ? 'active' : ''}`}
-                      onClick={() => setSelectedPlugin(p)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <td>
-                        <span className={`format-badge ${p.format}`} style={{
-                          fontSize: '9px',
-                          fontWeight: 'bold',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          backgroundColor: p.format === 'vst3' ? 'rgba(0,204,204,0.1)' : 'rgba(212,175,55,0.1)',
-                          color: p.format === 'vst3' ? 'var(--accent-cyan)' : 'var(--accent-gold)'
-                        }}>
-                          {(p.format || 'VST').toUpperCase()}
-                        </span>
-                      </td>
-                      <td style={{ fontWeight: '500' }}>{p.display_name || p.filename}</td>
-                      <td>{p.vendor || 'Unknown'}</td>
-                      <td>{fmtSize(p.file_size)}</td>
-                      <td style={{ fontSize: '11px', color: 'var(--text-muted)', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.path}>
-                        {p.path}
-                      </td>
-                    </tr>
+                    <React.Fragment key={group.id}>
+                      {/* Folder Row Header */}
+                      <tr 
+                        className="category-folder-header"
+                        onClick={() => toggleCategory(group.id)}
+                        style={{ cursor: 'pointer', backgroundColor: 'rgba(255,255,255,0.02)' }}
+                      >
+                        <td colSpan="5" style={{ padding: '8px 12px', fontWeight: 'bold', borderBottom: '1px solid var(--border-color)' }}>
+                          <span style={{ marginRight: '8px', color: 'var(--accent-gold)' }}>
+                            {isCollapsed ? '📁' : '📂'}
+                          </span>
+                          <span style={{ fontSize: '12px', color: '#fff' }}>
+                            {group.icon} {group.label}
+                          </span>
+                          <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginLeft: '6px' }}>
+                            ({group.plugins.length})
+                          </span>
+                        </td>
+                      </tr>
+                      
+                      {/* Plugin rows inside this category */}
+                      {!isCollapsed && group.plugins.map((p) => {
+                        const isSel = selectedPlugin && selectedPlugin.id === p.id;
+                        return (
+                          <tr 
+                            key={p.id} 
+                            className={`modern-tr-row ${isSel ? 'active' : ''}`}
+                            onClick={() => setSelectedPlugin(p)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <td>
+                              <span className={`format-badge ${p.format}`} style={{
+                                fontSize: '9px',
+                                fontWeight: 'bold',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                backgroundColor: p.format === 'vst3' ? 'rgba(0,204,204,0.1)' : 'rgba(212,175,55,0.1)',
+                                color: p.format === 'vst3' ? 'var(--accent-cyan)' : 'var(--accent-gold)'
+                              }}>
+                                {(p.format || 'VST').toUpperCase()}
+                              </span>
+                            </td>
+                            <td style={{ fontWeight: '500', paddingLeft: '24px' }}>
+                              {p.display_name || p.filename}
+                            </td>
+                            <td>{p.vendor || 'Unknown'}</td>
+                            <td>{fmtSize(p.file_size)}</td>
+                            <td style={{ fontSize: '11px', color: 'var(--text-muted)', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.path}>
+                              {p.path}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
                   );
                 })
               ) : (
