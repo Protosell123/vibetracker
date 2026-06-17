@@ -21,3 +21,9 @@ server/.env
 *.db
 *.db-journal
 *.sqlite
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
